@@ -303,7 +303,17 @@ a.obj-hit:hover, a.obj-hit:focus-visible { transform: none; outline: 3px dashed 
 .soon-card { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 18px; border: 3px dashed var(--ink); background: var(--paper); }
 .soon-card h3 { margin: 10px 0 6px; }
 .soon-card p { margin: 0; }
-.contracts { margin: 0 0 10px; display: grid; gap: 4px; }
+.contracts { margin: 16px 0 10px; display: grid; gap: 4px; }
+.contracts dd.ca-dd { padding: 0; border: 0; background: none; color: inherit; }
+.ca { display: flex; align-items: stretch; gap: 10px; max-width: 100%; margin: 4px 0 18px; }
+.ca-addr { flex: 1; min-width: 0; padding: 9px 12px; background: var(--ink); color: var(--paper); font-family: var(--font-geist-mono), monospace; font-size: 13px; overflow-wrap: anywhere; }
+.ca-btn { padding: 6px 14px; font-size: 14px; }
+.token-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0 0 16px; }
+.token-facts div { padding: 8px 12px; border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.token-facts dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.token-facts dd { margin: 0; font-family: var(--font-pixel), monospace; font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.token-facts a { text-decoration: underline; }
+.token-actions { margin-top: 4px; }
 .contracts dt { font-size: 13px; color: var(--muted); }
 .contracts dd { margin: 0; padding: 8px 12px; border: 2.5px solid var(--ink); background: var(--ink); color: var(--paper); font-size: 13px; overflow-wrap: anywhere; }
 .doc-cta { margin: 20px 3px 16px; }
@@ -335,6 +345,8 @@ a.obj-hit:hover, a.obj-hit:focus-visible { transform: none; outline: 3px dashed 
   .app-win .win-bar { justify-content: flex-start; padding-left: 40px; }
   .wallet-connected .chip:first-child { display: none; }
   .soon-card { flex-direction: column; }
+  .token-facts { grid-template-columns: 1fr 1fr; }
+  .ca { flex-direction: column; }
   .desk-hint { font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {

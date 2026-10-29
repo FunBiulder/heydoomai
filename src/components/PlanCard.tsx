@@ -147,6 +147,12 @@ export function PlanCard({ plan, onRequote }: { plan: ExecutionPlan; onRequote: 
       </div>
 
       <dl className="facts">
+        {plan.requestedUSD !== undefined && (
+          <>
+            <dt>Target spend</dt>
+            <dd>≈ ${plan.requestedUSD.toFixed(2)}</dd>
+          </>
+        )}
         {plan.to.minAmount && (
           <>
             <dt>Min received</dt>

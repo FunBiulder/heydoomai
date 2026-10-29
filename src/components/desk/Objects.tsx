@@ -231,7 +231,7 @@ export function CoinStack({ tag = true }: { tag?: boolean }) {
         <g>
           <path d="M118 40 150 18" {...ink} strokeWidth="2" />
           <rect x="126" y="2" width="44" height="22" rx="3" fill="#000" />
-          <text x="148" y="18" textAnchor="middle" className="obj-text inv" fontSize="12">SOON</text>
+          <text x="148" y="18" textAnchor="middle" className="obj-text inv" fontSize="12">LIVE</text>
         </g>
       )}
     </svg>

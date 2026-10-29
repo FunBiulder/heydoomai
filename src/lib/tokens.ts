@@ -1,5 +1,6 @@
 import { createPublicClient, erc20Abi, getAddress, http, isAddress, type Address, type PublicClient } from "viem";
 import { NATIVE, ROBINHOOD_CHAIN_ID, SUPPORTED_CHAINS } from "./chains";
+import { DOOM_TOKEN } from "./site";
 
 export type Token = {
   chainId: number;
@@ -59,6 +60,15 @@ async function lifiTokens(chainId: number): Promise<Token[]> {
   }
 }
 
+/** Current USD spot price from LI.FI's token list, when available. */
+export async function getTokenPriceUSD(token: Token): Promise<number | null> {
+  const listed = (await lifiTokens(token.chainId)).find(
+    (candidate) => candidate.address.toLowerCase() === token.address.toLowerCase(),
+  );
+  const price = Number(listed?.priceUSD ?? token.priceUSD);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
 async function onchainToken(chainId: number, address: Address): Promise<Token | null> {
   try {
     const c = publicClient(chainId);
@@ -112,10 +122,25 @@ function nativeToken(chainId: number): Token {
  * Resolve a symbol, name or address to tokens on a chain. Returns ranked candidates;
  * the agent must ask the user to disambiguate when there is more than one plausible match.
  */
+const DOOM_ALIASES = new Set(["doom", "$doom", "heydoomai", "hey doom ai", "doom token", "doom ai token"]);
+const isDoomImpostor = (t: Token) =>
+  t.chainId === DOOM_TOKEN.chainId &&
+  t.symbol.replace(/^\$/, "").toLowerCase() === "doom" &&
+  t.address.toLowerCase() !== DOOM_TOKEN.address.toLowerCase();
+
 export async function findTokens(query: string, chainId = ROBINHOOD_CHAIN_ID): Promise<Token[]> {
   const q = query.trim();
+
+  // $DOOM is pinned to the official contract — look-alikes are never offered.
+  if (chainId === DOOM_TOKEN.chainId && DOOM_ALIASES.has(q.toLowerCase())) {
+    const official = await onchainToken(chainId, getAddress(DOOM_TOKEN.address));
+    return official ? [official] : [];
+  }
   const native = nativeToken(chainId);
-  if (q.toLowerCase() === native.symbol.toLowerCase() || q === NATIVE) return [native];
+  if (q.toLowerCase() === native.symbol.toLowerCase() || q.toLowerCase() === NATIVE.toLowerCase()) {
+    const listed = (await lifiTokens(chainId)).find((t) => t.address.toLowerCase() === NATIVE.toLowerCase());
+    return [{ ...native, priceUSD: listed?.priceUSD }];
+  }
 
   if (isAddress(q)) {
     const addr = getAddress(q);
@@ -140,7 +165,7 @@ export async function findTokens(query: string, chainId = ROBINHOOD_CHAIN_ID): P
     const extra = await blockscoutSearch(q);
     results = [...extra.filter((e) => !results.some((r) => r.address === e.address)), ...results];
   }
-  return results.slice(0, 8);
+  return results.filter((r) => !isDoomImpostor(r)).slice(0, 8);
 }
 
 export async function getBalances(owner: Address, chainId: number, tokens: Token[]) {

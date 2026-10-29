@@ -4,7 +4,8 @@ import { CoinStack } from "@/components/desk/Objects";
 import { DoomLogo, DoomMark } from "@/components/Logo";
 import { Window } from "@/components/Window";
 import { XIcon } from "@/components/Icons";
-import { X_URL } from "@/lib/site";
+import { CopyAddress } from "@/components/CopyAddress";
+import { DOOM_TOKEN, X_URL } from "@/lib/site";
 
 const TICKER = [
   "NVDA", "AAPL", "TSLA", "SPY", "ETH", "USDC", "USDG", "WETH",
@@ -188,21 +189,36 @@ export default function Landing() {
         </div>
       </section>
 
-      <Window title="$DOOM.token — locked" className="token">
+      <Window title="$DOOM.token — live" className="token">
         <div className="token-row">
           <div className="token-art">
             <CoinStack />
           </div>
           <div>
-            <span className="badge">Coming soon</span>
+            <span className="badge">Live on {DOOM_TOKEN.chainName}</span>
             <h2 className="sec-title">$DOOM</h2>
             <p className="lead">
-              The coordination layer for the Doom ecosystem is in development. Contract, supply and utility will be
-              revealed through official channels only. Any token claiming the name before then is not ours.
+              The native token of the Doom ecosystem — live on Robinhood Chain and routable straight from DoomAI. One
+              contract, one source of truth: verify the address below before you trade.
             </p>
-            <a href={X_URL} target="_blank" rel="noreferrer" className="btn">
-              <XIcon size={14} /> Follow the launch
-            </a>
+            <dl className="token-facts">
+              <div><dt>Name</dt><dd>{DOOM_TOKEN.name}</dd></div>
+              <div><dt>Symbol</dt><dd>${DOOM_TOKEN.symbol}</dd></div>
+              <div><dt>Supply</dt><dd>{DOOM_TOKEN.totalSupply}</dd></div>
+              <div><dt>Decimals</dt><dd>{DOOM_TOKEN.decimals}</dd></div>
+            </dl>
+            <CopyAddress address={DOOM_TOKEN.address} />
+            <div className="btn-row token-actions">
+              <Link href="/doomai" className="btn btn-default">
+                Swap for $DOOM in DoomAI
+              </Link>
+              <a href={DOOM_TOKEN.explorerUrl} target="_blank" rel="noreferrer" className="btn">
+                View on explorer ↗
+              </a>
+              <a href={X_URL} target="_blank" rel="noreferrer" className="btn">
+                <XIcon size={14} /> Follow
+              </a>
+            </div>
           </div>
         </div>
       </Window>

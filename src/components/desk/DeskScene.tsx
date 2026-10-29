@@ -67,7 +67,7 @@ export function DeskScene() {
       <Obj href="/docs#fees" label="Fees ledger" spot={{ l: 66, t: 54, w: 12 }}>
         <Ledger />
       </Obj>
-      <Obj href="/docs#smart-contracts" label="$DOOM — soon" spot={{ l: 78.5, t: 50, w: 11.5 }}>
+      <Obj href="/docs#smart-contracts" label="$DOOM token" spot={{ l: 78.5, t: 50, w: 11.5 }}>
         <CoinStack tag={false} />
       </Obj>
 

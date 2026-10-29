@@ -3,7 +3,7 @@ import { formatUnits, parseUnits, type Address } from "viem";
 import { z } from "zod";
 import { chainName, NATIVE, resolveChainId, ROBINHOOD_CHAIN_ID } from "./chains";
 import { lifiQuote } from "./lifi";
-import { findTokens, getBalances, type Token } from "./tokens";
+import { findTokens, getBalances, getTokenPriceUSD, type Token } from "./tokens";
 import { uniswapEnabled, uniswapQuote, type TxRequest } from "./uniswap";
 
 export type TokenView = Pick<Token, "symbol" | "name" | "address" | "decimals" | "chainId">;
@@ -27,6 +27,7 @@ export type ExecutionPlan = {
   /** Ready-to-send tx (LI.FI routes, or Uniswap after /api/swap). */
   tx?: TxRequest;
   warnings: string[];
+  requestedUSD?: number;
 };
 
 const view = (t: Token): TokenView => ({
@@ -85,6 +86,7 @@ const forModel = (output: unknown) => {
       needsApproval: Boolean(p.approval),
       needsPermitSignature: Boolean(p.permitData),
       warnings: p.warnings,
+      requestedUSD: p.requestedUSD,
     } as never,
   };
 };
@@ -135,15 +137,18 @@ export function buildTools(wallet: Address | undefined) {
 
     quote_swap: tool({
       description:
-        "Quote a same-chain swap on Robinhood Chain between any two tokens (crypto <-> crypto, crypto <-> stock token, stock <-> stock). Renders a confirmation card the user signs in their wallet. Never claims the swap is done.",
+        "Quote a same-chain swap on Robinhood Chain between any two tokens (crypto <-> crypto, crypto <-> stock token, stock <-> stock). For requests such as 'spend $10 of ETH', pass amountUSD: '10' and the input token as fromToken; do not ask the user to convert dollars to token units. The server uses the latest available token spot price and returns an error if no price is available. Renders a confirmation card the user signs in their wallet. Never claims the swap is done.",
       inputSchema: z.object({
         fromToken: z.string().describe("Symbol or address of the token to sell"),
         toToken: z.string().describe("Symbol or address of the token to buy"),
-        amount: z.string().describe("Human-readable amount, e.g. '0.05' or '100'"),
+        amount: z.string().optional().describe("Human-readable amount of fromToken (e.g. '0.05'); provide this or amountUSD"),
+        amountUSD: z.string().optional().describe("Approximate USD value of fromToken to spend (e.g. '1' for one dollar worth of ETH); provide this or amount"),
         side: z.enum(["sell", "buy"]).default("sell").describe("'sell' = amount is of fromToken; 'buy' = amount is of toToken"),
         slippageBps: z.number().int().min(1).max(500).optional().describe("Max slippage in basis points (50 = 0.5%)"),
+      }).refine((input) => Boolean(input.amount) !== Boolean(input.amountUSD), {
+        message: "Provide exactly one of amount or amountUSD.",
       }),
-      execute: async ({ fromToken, toToken, amount, side, slippageBps }) => {
+      execute: async ({ fromToken, toToken, amount, amountUSD, side, slippageBps }) => {
         if (!wallet) return needWallet;
         const chainId = ROBINHOOD_CHAIN_ID;
         const [a, b] = await Promise.all([resolveOne(fromToken, chainId), resolveOne(toToken, chainId)]);
@@ -151,9 +156,23 @@ export function buildTools(wallet: Address | undefined) {
         if (!b.ok) return b;
         const tIn = a.token;
         const tOut = b.token;
-        const exactIn = side === "sell";
-        const raw = parseUnits(amount, exactIn ? tIn.decimals : tOut.decimals).toString();
+        const exactIn = amountUSD !== undefined || side === "sell";
+        let raw: string;
+        if (amountUSD !== undefined) {
+          const usd = Number(amountUSD);
+          if (!Number.isFinite(usd) || usd <= 0) return { error: "Enter a positive USD amount." };
+          const price = await getTokenPriceUSD(tIn);
+          if (!price) return { error: `I can't get a current USD price for ${tIn.symbol}. Ask for an amount in ${tIn.symbol} instead.` };
+          const tokenAmount = (usd / price).toFixed(Math.min(tIn.decimals, 18));
+          const rawAmount = parseUnits(tokenAmount, tIn.decimals);
+          if (rawAmount <= BigInt(0)) return { error: `That USD amount is too small to swap into ${tIn.symbol}.` };
+          raw = rawAmount.toString();
+        } else {
+          raw = parseUnits(amount!, exactIn ? tIn.decimals : tOut.decimals).toString();
+        }
+        const inputAmount = amountUSD !== undefined ? formatUnits(BigInt(raw), tIn.decimals) : amount!;
         const warnings: string[] = [];
+        if (amountUSD !== undefined) warnings.push("USD value is estimated from a spot price and may change before execution.");
 
         if (uniswapEnabled()) {
           const q = await uniswapQuote({
@@ -184,6 +203,7 @@ export function buildTools(wallet: Address | undefined) {
             permitData: q.permitData,
             uniswapQuote: q.rawQuote,
             warnings,
+            requestedUSD: amountUSD !== undefined ? Number(amountUSD) : undefined,
           };
           return { plan };
         }
@@ -206,7 +226,7 @@ export function buildTools(wallet: Address | undefined) {
           provider: `LI.FI · ${q.tool}`,
           chainId,
           toChainId: chainId,
-          from: { ...view(tIn), amount: amount },
+          from: { ...view(tIn), amount: inputAmount },
           to: {
             ...view(tOut),
             amount: formatUnits(BigInt(q.amountOut), tOut.decimals),
@@ -217,6 +237,7 @@ export function buildTools(wallet: Address | undefined) {
           approval: q.approval,
           tx: q.tx,
           warnings,
+          requestedUSD: amountUSD !== undefined ? Number(amountUSD) : undefined,
         };
         return { plan };
       },

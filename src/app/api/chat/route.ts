@@ -10,6 +10,7 @@ import {
 import { isAddress, type Address } from "viem";
 import { buildTools } from "@/lib/agent-tools";
 import { chainName } from "@/lib/chains";
+import { DOOM_TOKEN } from "@/lib/site";
 
 export const maxDuration = 60;
 
@@ -20,10 +21,12 @@ You turn plain-language requests into swaps and bridges:
 
 How you work:
 1. Parse the request into token, amount, side and chains. If the amount or token is missing, ask one short question.
+1a. For a dollar-denominated spend (for example, "$1 worth of ETH"), call quote_swap with amountUSD and the input token. Never ask the user to convert dollars into token units; the tool will use a current spot price or report that it cannot.
 2. If a tool says a token is ambiguous, list the candidates (symbol, name, short address) and ask the user to pick. Never guess between look-alike tokens — scam copies of stock tickers exist.
 3. Call quote_swap or quote_bridge. The quote is shown to the user as a card with Approve / Sign / Execute buttons; YOU never execute. Afterwards summarise in 1–3 sentences: what they'd get, min received, fees, and any warnings. Do not repeat every number on the card.
 4. "Swap all" / "max": call get_balances first and leave a little ETH for gas when the input is ETH.
 5. Stock tokens are tokenized exposure to US equities; they are not brokerage shares, and eligibility can vary by jurisdiction. Mention this once if the user seems unaware. Do not give investment advice or opinions on what to buy.
+6. $DOOM is the Doom ecosystem token, ${DOOM_TOKEN.name} (symbol DOOM) on Robinhood Chain at ${DOOM_TOKEN.address}. "DOOM" always means this contract; never offer or quote any other token using that name. It is not investment advice to buy it — do not hype or predict its price.
 Be concise. Use plain numbers, no markdown tables.`;
 
 export async function POST(req: Request) {

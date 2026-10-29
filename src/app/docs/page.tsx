@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Window } from "@/components/Window";
+import { CopyAddress } from "@/components/CopyAddress";
 import { XLink } from "@/components/XLogo";
+import { DOOM_TOKEN } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Docs · Doom AI",
-  description: "What Doom AI is, how it works, fees, smart contracts and the upcoming Doom token.",
+  description: "What Doom AI is, how it works, fees, smart contracts and the $DOOM token.",
 };
 
 const SECTIONS = [
@@ -116,15 +118,27 @@ export default function DocsPage() {
           <Window id="smart-contracts" title="Smart contracts" className="doc index-card">
             <div className="soon-card">
               <div>
-                <span className="badge">Coming soon</span>
+                <span className="badge">Live · {DOOM_TOKEN.chainName}</span>
                 <h3 className="fee-big">$DOOM token</h3>
                 <p className="muted">
-                  The Doom token is in the works. Contract address, supply and utility will be published here — and on
-                  our X account — at launch. Until then, any “DOOM” token you see is not ours.
+                  This is the only official $DOOM contract. DoomAI always routes “DOOM” to this address — any other
+                  token using the name is not ours.
                 </p>
               </div>
               <XLink size={20} />
             </div>
+            <dl className="contracts">
+              <dt>$DOOM ({DOOM_TOKEN.name}) · {DOOM_TOKEN.chainName}, chain id {DOOM_TOKEN.chainId}</dt>
+              <dd className="ca-dd">
+                <CopyAddress address={DOOM_TOKEN.address} />
+              </dd>
+            </dl>
+            <dl className="token-facts">
+              <div><dt>Symbol</dt><dd>${DOOM_TOKEN.symbol}</dd></div>
+              <div><dt>Total supply</dt><dd>{DOOM_TOKEN.totalSupply}</dd></div>
+              <div><dt>Decimals</dt><dd>{DOOM_TOKEN.decimals}</dd></div>
+              <div><dt>Explorer</dt><dd><a href={DOOM_TOKEN.explorerUrl} target="_blank" rel="noreferrer">Blockscout ↗</a></dd></div>
+            </dl>
             <h3>Contracts Doom interacts with</h3>
             <dl className="contracts">
               <dt>Uniswap Universal Router · Robinhood Chain</dt>

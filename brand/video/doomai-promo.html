@@ -1,0 +1,317 @@
+<!doctype html>
+<!--
+  DoomAI 10-second promo, 1920×1080 @ 30fps.
+  Deterministic: window.render(t) draws the frame at t seconds, so capture.mjs can step frame by frame.
+  Open in a browser to preview (it plays in a loop when not driven by the capture script).
+  Scenes: 0–2.8 intro · 2.8–6.6 prompt + quote · 6.6–8.6 swap done · 8.6–10 outro.
+  Amounts are illustrative demo values.
+-->
+<html>
+<head>
+<meta charset="utf-8" />
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; }
+  body { background: radial-gradient(circle at 1.5px 1.5px, #000 1.3px, #fff 1.7px) 0 0 / 8px 8px; color: #000; font-family: "IBM Plex Mono", monospace; }
+  .px { font-family: "Pixelify Sans", monospace; }
+  .hide { visibility: hidden; }
+
+  .device { position: absolute; left: 70px; top: 50px; width: 1780px; height: 980px; background: #fff; border: 6px solid #000; border-radius: 24px; box-shadow: 16px 16px 0 #000; overflow: hidden; }
+  .bar { position: absolute; left: 0; right: 0; top: 0; height: 78px; border-bottom: 6px solid #000; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 34px; font-size: 32px; font-weight: 600; background: #fff; z-index: 5; }
+  .bar .r { justify-self: end; }
+  .bar .q { display: inline-grid; place-items: center; width: 38px; height: 38px; border: 4px solid #000; border-radius: 50%; font-size: 24px; margin-right: 12px; vertical-align: -4px; }
+  .bar .mid { font-weight: 400; font-size: 28px; }
+  .tools { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; border-top: 6px solid #000; display: grid; grid-template-columns: repeat(6, 1fr); background: #fff; z-index: 5; }
+  .tools div { display: grid; place-items: center; border-left: 5px solid #000; font-size: 22px; font-weight: 600; }
+  .tools div:first-child { border-left: 0; }
+  .tools div.on { background: repeating-conic-gradient(#000 0 25%, #fff 0 50%) 0 0 / 4px 4px; }
+  .tools div.on span { background: #fff; padding: 0 10px; }
+  .screen { position: absolute; left: 0; right: 0; top: 84px; bottom: 102px; }
+
+  /* intro */
+  .intro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 70px; }
+  .intro img { width: 330px; height: 330px; image-rendering: pixelated; }
+  .intro .kick { font-size: 30px; letter-spacing: .16em; text-transform: uppercase; margin-bottom: 18px; }
+  .intro .title { font-size: 210px; line-height: .95; font-weight: 700; }
+  .intro .title mark { background: #000; color: #fff; padding: 0 18px; }
+  .intro .tagline { margin-top: 26px; font-size: 46px; }
+  .cursor { display: inline-block; width: 0.5em; height: 1em; background: #000; vertical-align: -0.12em; margin-left: 6px; }
+
+  /* zoom rects transition */
+  .zoom { position: absolute; border: 5px solid #000; z-index: 4; pointer-events: none; }
+
+  /* window */
+  .win { position: absolute; left: 230px; top: 18px; width: 1320px; height: 762px; background: #fff; border: 6px solid #000; box-shadow: 12px 12px 0 #000; border-radius: 6px; }
+  .wbar { position: relative; height: 62px; border-bottom: 6px solid #000; display: flex; align-items: center; justify-content: center;
+    background: repeating-linear-gradient(180deg, #fff 0 7px, #000 7px 10px) 0 6px / 100% calc(100% - 12px) no-repeat, #fff; }
+  .wbar .close { position: absolute; left: 20px; width: 32px; height: 32px; border: 5px solid #000; background: #fff; box-shadow: 0 0 0 8px #fff; }
+  .wbar .t { background: #fff; padding: 0 20px; font-size: 32px; font-weight: 700; }
+  .wbar .wallet { position: absolute; right: 16px; background: #fff; padding-left: 14px; display: flex; gap: 10px; }
+  .chip { display: inline-block; padding: 4px 14px; border: 3.5px solid #000; border-radius: 8px; font-size: 20px; box-shadow: 3px 3px 0 #000; background: #fff; }
+  .chip .d { display: inline-block; width: 12px; height: 12px; background: #000; margin-right: 8px; }
+  .wbody { position: absolute; left: 0; right: 0; top: 68px; bottom: 0; padding: 26px 40px 0; }
+
+  .bubble { position: absolute; right: 40px; top: 22px; padding: 16px 24px; background: #000; color: #fff; border-radius: 20px 20px 4px 20px; font-size: 28px; }
+  .trace { position: absolute; left: 40px; top: 100px; display: grid; gap: 10px; font-size: 22px; }
+  .trace div { display: flex; gap: 14px; align-items: center; }
+  .trace b { display: inline-grid; place-items: center; width: 30px; height: 30px; background: #000; color: #fff; font-size: 18px; }
+  .trace code { padding: 1px 10px; border: 2.5px solid #000; font-family: inherit; font-weight: 600; }
+
+  .card { position: absolute; left: 40px; top: 240px; width: 800px; border: 5px solid #000; box-shadow: 9px 9px 0 #000; padding: 22px 26px; background: #fff; }
+  .card .head { display: flex; justify-content: space-between; align-items: center; font-size: 20px; }
+  .tag { padding: 3px 14px; background: #000; color: #fff; font-size: 22px; letter-spacing: .08em; }
+  .legs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center; margin: 12px 0; }
+  .leg { border: 3.5px solid #000; padding: 12px 16px; }
+  .leg small { font-size: 17px; color: #333; }
+  .leg .amt { font-size: 40px; font-weight: 700; line-height: 1.15; }
+  .arrow { font-size: 36px; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: auto auto; grid-auto-flow: column; gap: 0 20px; font-size: 19px; border-top: 4px dotted #000; padding-top: 10px; }
+  .facts dd { margin: 0; font-weight: 600; }
+  .facts dt { color: #333; }
+  .btn { display: inline-flex; align-items: center; gap: 12px; margin-top: 16px; padding: 12px 30px; border: 4px solid #000; border-radius: 12px; background: #000; color: #fff; font-size: 28px; font-weight: 700; outline: 4px solid #000; outline-offset: 5px; margin-left: 5px; }
+  .btn.pressed { transform: translate(4px, 4px); background: #333; }
+  .btn.done { background: #fff; color: #000; }
+  
+  .stamp { position: absolute; left: 600px; top: 64px; padding: 18px 34px; border: 8px solid #000; background: #fff; font-size: 64px; font-weight: 700; box-shadow: 12px 12px 0 #000; outline: 6px solid #fff; outline-offset: -18px; }
+  .stamp span { display: block; font-size: 28px; font-weight: 600; text-align: center; letter-spacing: .1em; }
+  .side { position: absolute; right: 40px; top: 240px; width: 400px; display: grid; gap: 12px; }
+  .result { padding: 12px 16px; border: 4px solid #000; background: #000; color: #fff; font-size: 20px; line-height: 1.5; }
+  .result u { font-weight: 700; }
+  .note { padding: 9px 14px; border: 3.5px dashed #000; font-size: 18px; line-height: 1.35; }
+  
+  .composer { position: absolute; left: 0; right: 0; bottom: 0; height: 104px; border-top: 5px solid #000; display: flex; gap: 14px; align-items: center; padding: 0 40px; background: #fff; }
+  .composer .in { flex: 1; height: 64px; border: 4px solid #000; border-radius: 10px; padding: 0 20px; display: flex; align-items: center; font-size: 27px; box-shadow: inset 4px 4px 0 rgb(0 0 0 / 12%); }
+  .composer .in .ph { color: #777; }
+  .composer .send { height: 64px; padding: 0 32px; border: 4px solid #000; border-radius: 10px; display: grid; place-items: center; background: #000; color: #fff; font-size: 28px; font-weight: 700; }
+  .composer .send.off { background: #999; border-color: #999; }
+  .composer .send.pressed { background: #fff; color: #000; border-color: #000; }
+
+  .dialog { position: absolute; left: 1000px; top: 230px; width: 470px; padding: 24px; background: #fff; border: 5px solid #000; box-shadow: 0 0 0 8px #fff, 0 0 0 13px #000, 22px 22px 0 13px #000; z-index: 3; }
+  .dialog h3 { font-size: 32px; margin-bottom: 10px; }
+  .dialog p { font-size: 19px; margin-bottom: 18px; }
+  .dialog .row { display: flex; gap: 14px; }
+  .dialog .b { padding: 8px 22px; border: 4px solid #000; border-radius: 10px; font-size: 24px; font-weight: 700; box-shadow: 4px 4px 0 #000; }
+  .dialog .b.go { background: #000; color: #fff; }
+  .dialog .b.go.pressed { transform: translate(4px, 4px); box-shadow: none; }
+
+  .pointer { position: absolute; width: 44px; z-index: 6; filter: drop-shadow(3px 3px 0 #fff); }
+
+  /* outro */
+  .outro { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 30px; text-align: center; }
+  .lockup { display: flex; align-items: center; gap: 44px; }
+  .lockup img { width: 230px; height: 230px; image-rendering: pixelated; }
+  .lockup .w { font-size: 190px; font-weight: 700; line-height: 1; }
+  .lockup .w mark { background: #000; color: #fff; padding: 0 16px; }
+  .outro .line { font-size: 44px; }
+  .outro .pills { display: flex; gap: 18px; }
+  .outro .pills span { padding: 8px 22px; border: 4px solid #000; box-shadow: 6px 6px 0 #000; font-size: 28px; font-weight: 600; }
+  .outro .pills span.on { background: #000; color: #fff; }
+
+  .disc { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 16px; color: #333; z-index: 6; }
+</style>
+</head>
+<body>
+<div class="device">
+  <div class="bar px"><span><span class="q">?</span><span id="place">Desk</span></span><span class="mid" id="mid">Doom AI · Robinhood Chain</span><span class="r">☞ <span id="next">DoomAI</span></span></div>
+
+  <div class="screen">
+    <div class="intro" id="intro">
+      <img id="introMark" src="../doom-mark.svg" alt="" />
+      <div>
+        <div class="kick px" id="kick"></div>
+        <div class="title px" id="title"></div>
+        <div class="tagline px" id="tag"></div>
+      </div>
+    </div>
+
+    <div class="win" id="win">
+      <div class="wbar px"><span class="close"></span><span class="t">DoomAI</span>
+        <span class="wallet"><span class="chip"><span class="d"></span>Robinhood Chain</span><span class="chip mono">0x7a3f…91c2</span></span></div>
+      <div class="wbody">
+        <div class="bubble" id="bubble">Swap 0.05 ETH for NVDA</div>
+        <div class="trace" id="trace">
+          <div id="tr0"><b>✓</b><code>find_token</code> NVDA → verified Stock Token · decimals read on-chain</div>
+          <div id="tr1"><b>✓</b><code>get_balances</code> 0.42 ETH available</div>
+          <div id="tr2"><b>✓</b><code>quote_swap</code> Uniswap v4 · best route</div>
+        </div>
+        <div class="card" id="card">
+          <div class="head"><span class="tag px">SWAP</span><span>Uniswap</span></div>
+          <div class="legs">
+            <div class="leg"><small>You pay · Robinhood Chain</small><div class="amt px">0.05 ETH</div></div>
+            <span class="arrow">→</span>
+            <div class="leg"><small>You get · Robinhood Chain</small><div class="amt px">≈ 0.81 NVDA</div></div>
+          </div>
+          <dl class="facts"><dt>Min received</dt><dd>0.80 NVDA</dd><dt>Price impact</dt><dd>0.08%</dd><dt>Gas</dt><dd>$0.004</dd><dt>Steps</dt><dd>swap</dd></dl>
+          <div class="btn px" id="btn">Swap</div>
+        </div>
+        <div class="side" id="side">
+          <div class="note">✓ Exact-amount approval only</div>
+          <div class="note">✓ Router verified on-chain</div>
+          <div class="note">✓ Signed in <b>your</b> wallet</div>
+          <div class="result" id="result">Done — 0.81 NVDA is in your wallet.<br />Swap: <u>0x8f3a…c21e</u> ↗ explorer</div>
+        </div>
+        <div class="stamp px" id="stamp">SWAP COMPLETE<span>✓ CONFIRMED ON-CHAIN</span></div>
+        <div class="composer"><div class="in" id="input"></div><div class="send px" id="send">Send</div></div>
+      </div>
+    </div>
+
+    <div class="dialog" id="dialog">
+      <h3 class="px">Confirm transaction</h3>
+      <p>Wallet · Robinhood Chain<br />Swap 0.05 ETH → NVDA</p>
+      <div class="row"><span class="b px">Reject</span><span class="b go px" id="confirm">Confirm</span></div>
+    </div>
+
+    <div class="outro" id="outro">
+      <div class="lockup"><img src="../doom-mark.svg" alt="" /><div class="w px">DOOM <mark>AI</mark></div></div>
+      <div class="line px" id="oline"></div>
+      <div class="pills px" id="pills"><span class="on">Launch DoomAI</span><span>Robinhood Chain</span><span>0% fee</span><span>Self-custody</span></div>
+    </div>
+
+    <div id="zooms"></div>
+  </div>
+
+  <div class="tools px">
+    <div id="t0"><span>Desk</span></div><div id="t1"><span>DoomAI</span></div><div><span>Docs</span></div>
+    <div><span>Fees</span></div><div><span>$DOOM</span></div><div><span>Follow 𝕏</span></div>
+  </div>
+</div>
+
+<svg class="pointer" id="pointer" viewBox="0 0 22 32"><path d="M2 2v24l6-6 4 9 4-2-4-9h8z" fill="#000" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const prog = (t, a, b) => clamp((t - a) / (b - a));
+  const steps = (p, n = 6) => Math.round(p * n) / n; // 1-bit "stepped" motion
+  const typed = (s, p) => s.slice(0, Math.round(s.length * clamp(p)));
+  const show = (el, on) => el.classList.toggle("hide", !on);
+  const blink = (t) => Math.floor(t * 2.4) % 2 === 0;
+  const spin = (t) => "|/-\\"[Math.floor(t * 12) % 4];
+  const cur = (t, on = true) => (on && blink(t) ? '<span class="cursor"></span>' : '<span class="cursor" style="visibility:hidden"></span>');
+
+  const PROMPT = "Swap 0.05 ETH for NVDA";
+
+  function zoomRects(t, t0, from, to) {
+    // classic window-open animation: a few outlines growing from `from` rect to `to` rect
+    const p = prog(t, t0, t0 + 0.35);
+    let html = "";
+    if (p > 0 && p < 1) {
+      for (let k = 0; k < 4; k++) {
+        const q = clamp(p * 1.6 - k * 0.18);
+        if (q <= 0 || q >= 1) continue;
+        const e = steps(q, 8);
+        const l = from[0] + (to[0] - from[0]) * e, tp = from[1] + (to[1] - from[1]) * e;
+        const w = from[2] + (to[2] - from[2]) * e, h = from[3] + (to[3] - from[3]) * e;
+        html += `<div class="zoom" style="left:${l}px;top:${tp}px;width:${w}px;height:${h}px"></div>`;
+      }
+    }
+    return html;
+  }
+
+  window.render = function (t) {
+    const inIntro = t < 2.8, inApp = t >= 3.05 && t < 8.75, inOutro = t >= 8.95;
+
+    // status bar + toolbar
+    $("place").textContent = inIntro ? "Desk" : inOutro ? "Desk" : "DoomAI";
+    $("next").textContent = inIntro || inOutro ? "DoomAI" : "Docs";
+    $("t0").classList.toggle("on", inIntro || inOutro);
+    $("t1").classList.toggle("on", !(inIntro || inOutro));
+    $("mid").textContent = inApp ? "Demo · illustrative amounts · not investment advice" : "Doom AI · Robinhood Chain";
+
+    // ── intro
+    show($("intro"), inIntro);
+    if (inIntro) {
+      const m = steps(prog(t, 0.15, 0.75), 6);
+      $("introMark").style.transform = `scale(${m})`;
+      $("kick").innerHTML = "◆ " + typed("Intent-native execution · Robinhood Chain", prog(t, 0.6, 1.3));
+      const title = typed("HEY, DOOM AI", prog(t, 0.8, 1.7));
+      $("title").innerHTML = title.replace(/^HEY, /, "HEY,<br>").replace("AI", "<mark>AI</mark>").replace(/A$/, "<mark>A</mark>") || "&nbsp;";
+      $("tag").innerHTML = "&gt; " + typed("trade by typing.", prog(t, 1.75, 2.35)) + cur(t);
+    }
+
+    // ── transitions
+    const full = [230, 18, 1320, 762];
+    $("zooms").innerHTML =
+      zoomRects(t, 2.75, [820, 360, 120, 60], full) + zoomRects(t, 8.65, full, [700, 300, 380, 200]);
+
+    // ── app window
+    show($("win"), inApp);
+    if (inApp) {
+      const typeP = prog(t, 3.25, 4.45);
+      const sent = t >= 4.65;
+      $("input").innerHTML = sent
+        ? `<span class="ph">Ask DoomAI anything…</span>`
+        : typeP > 0 ? typed(PROMPT, typeP) + cur(t) : `<span class="ph">e.g. swap 100 USDG for AAPL</span>`;
+      $("send").className = "send px" + (t >= 4.5 && t < 4.65 ? " pressed" : !sent && typeP < 1 ? " off" : "");
+
+      show($("bubble"), sent);
+      [4.85, 5.2, 5.55].forEach((s, i) => {
+        const row = $("tr" + i);
+        show(row, t >= s);
+        row.querySelector("b").textContent = t >= s + 0.28 ? "✓" : spin(t);
+      });
+      const cardP = steps(prog(t, 5.9, 6.15), 4);
+      show($("card"), t >= 5.9);
+      $("card").style.transform = `translateY(${(1 - cardP) * 40}px)`;
+      show($("side"), t >= 6.15);
+
+      // button state machine
+      const btn = $("btn");
+      let label = "Swap", cls = "btn px";
+      if (t >= 6.55 && t < 6.7) cls += " pressed";
+      if (t >= 6.7 && t < 7.45) label = "Confirm in wallet…";
+      if (t >= 7.45 && t < 7.9) label = "Waiting for confirmation " + spin(t);
+      if (t >= 7.9) { label = "Done ✓"; cls += " done"; }
+      btn.textContent = label; btn.className = cls;
+      show($("result"), t >= 8.05);
+      const sp = steps(prog(t, 7.95, 8.15), 3);
+      show($("stamp"), t >= 7.95);
+      $("stamp").style.transform = `rotate(${-8 * sp}deg) scale(${1.4 - 0.4 * sp})`;
+    }
+
+    // wallet dialog
+    show($("dialog"), t >= 6.75 && t < 7.4);
+    $("confirm").classList.toggle("pressed", t >= 7.2);
+
+    // pointer path: composer → send → swap button → confirm → away
+    const at = (id, dx = 0, dy = 0) => {
+      const r = $(id).getBoundingClientRect();
+      return [r.left + r.width * 0.45 + dx, r.top + r.height * 0.4 + dy];
+    };
+    const [sx, sy] = at("send"), [bx, by] = at("btn", -40), [cx, cy] = at("confirm");
+    const P = [
+      [3.0, 1560, 960], [4.25, sx + 30, sy + 40], [4.45, sx, sy], [5.95, sx, sy],
+      [6.4, bx, by], [6.62, bx, by], [6.95, cx, cy], [7.3, cx, cy], [7.65, 1700, 1000],
+    ];
+    const ptr = $("pointer");
+    show(ptr, t >= 3.0 && t < 8.6);
+    for (let i = 0; i < P.length - 1; i++) {
+      const [ta, xa, ya] = P[i], [tb, xb, yb] = P[i + 1];
+      if (t >= ta && t <= tb) {
+        const e = 0.5 - Math.cos(Math.PI * prog(t, ta, tb)) / 2;
+        ptr.style.left = xa + (xb - xa) * e + "px";
+        ptr.style.top = ya + (yb - ya) * e + "px";
+      }
+    }
+
+    // ── outro
+    show($("outro"), inOutro);
+    if (inOutro) {
+      $("outro").style.transform = `scale(${0.85 + 0.15 * steps(prog(t, 8.95, 9.2), 4)})`;
+      $("oline").innerHTML = typed("Swap stocks & crypto by typing.", prog(t, 9.1, 9.6)) + cur(t);
+      show($("pills"), t >= 9.45);
+    }
+  };
+
+  // Preview mode: loop in real time unless the capture script takes over.
+  window.__driven = false;
+  const t0 = performance.now();
+  (function loop() {
+    if (window.__driven) return;
+    window.render(((performance.now() - t0) / 1000) % 10);
+    requestAnimationFrame(loop);
+  })();
+</script>
+</body>
+</html>

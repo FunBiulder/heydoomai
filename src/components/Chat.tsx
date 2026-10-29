@@ -10,6 +10,7 @@ import { PlanCard } from "./PlanCard";
 const EXAMPLES = [
   "Swap 0.05 ETH for NVDA",
   "Buy $200 of SPY with USDG",
+  "Swap 0.01 ETH for $DOOM",
   "Sell all my TSLA for ETH",
   "Bridge 0.1 ETH from Base to Robinhood",
   "Bridge 50 USDC from Arbitrum and swap it into AAPL",
